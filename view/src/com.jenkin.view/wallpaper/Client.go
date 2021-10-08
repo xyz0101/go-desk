@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"os"
 	"sync"
 	"time"
 	"view/src/com.jenkin.view/wallpaperstruct"
 )
+
+var LoginCh chan bool
 
 var rLock sync.RWMutex
 var Conn net.Conn
@@ -18,20 +19,27 @@ var Strategy wallpaperstruct.WallStrategy
 //func main() {
 //	Start()
 //}
-
-func Start(option wallpaperstruct.Option) {
-
+func PreConn() bool {
+	//无缓冲channel，阻塞
+	LoginCh = make(chan bool)
 	Conn = getConnection()
 	if Conn == nil {
-		fmt.Println("客户端建立连接失败,5秒后退出程序")
-		time.Sleep(time.Second * 5)
-		os.Exit(0)
+		//fmt.Println("客户端建立连接失败,5秒后退出程序")
+		//time.Sleep(time.Second * 5)
+		//os.Exit(0)
+		return false
 	}
-	login()
-	//go HeartBeatHandler(conn)
+	return true
+}
+func handleEvent() {
 	go WallpaperHandler()
-	// 根据策略循环
-	loopNext()
+}
+func Start() {
+
+	if Conn != nil {
+		// 根据策略循环
+		loopNext()
+	}
 }
 
 func getConnection() net.Conn {
@@ -45,14 +53,14 @@ func getConnection() net.Conn {
 	return conn
 }
 
-func login() {
+func Login(code string, password string) {
 	option := wallpaperstruct.Option{
 		OperateType: "login",
-		//UserCode:"jenkin",
-		UserCode:    os.Args[1],
-		OperateData: "password",
+		UserCode:    code,
+		OperateData: password,
 	}
 	writeServer(option, Conn)
+	handleEvent()
 }
 
 func loopNext() {
@@ -151,9 +159,10 @@ func tryReconnect() {
 }
 
 func loginFailed(option wallpaperstruct.Option, conn net.Conn) {
-	fmt.Println("登录失败，用户未注册，或未配置规则,5秒后退出")
-	time.Sleep(time.Second * 5)
-	os.Exit(0)
+	LoginCh <- false
+	//fmt.Println("登录失败，用户未注册，或未配置规则,5秒后退出")
+	//time.Sleep(time.Second * 5)
+	//os.Exit(0)
 }
 
 func loginSuccess(option wallpaperstruct.Option, conn net.Conn) {
@@ -167,6 +176,7 @@ func loginSuccess(option wallpaperstruct.Option, conn net.Conn) {
 	fmt.Println("登录获取到的配置：", Strategy)
 	fmt.Println("登录成功：", option)
 	defer rLock.Unlock()
+	LoginCh <- true
 
 }
 
@@ -179,6 +189,9 @@ func changeStrategy(option wallpaperstruct.Option, conn net.Conn) {
 	Opt.OperateData = option.OperateData
 	getNextFromServer(option, conn)
 	//}
+}
+func Next() {
+	getNextFromServer(Opt, Conn)
 }
 
 func getNextFromServer(option wallpaperstruct.Option, conn net.Conn) {

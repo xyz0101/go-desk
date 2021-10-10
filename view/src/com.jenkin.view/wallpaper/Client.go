@@ -10,6 +10,7 @@ import (
 )
 
 var LoginCh chan bool
+var PreImageCh chan string
 
 var rLock sync.RWMutex
 var Conn net.Conn
@@ -22,6 +23,7 @@ var Strategy wallpaperstruct.WallStrategy
 func PreConn() bool {
 	//无缓冲channel，阻塞
 	LoginCh = make(chan bool)
+	PreImageCh = make(chan string, 10)
 	Conn = getConnection()
 	if Conn == nil {
 		//fmt.Println("客户端建立连接失败,5秒后退出程序")
@@ -43,8 +45,8 @@ func Start() {
 }
 
 func getConnection() net.Conn {
-	//conn, err := net.Dial("tcp", "127.0.0.1:9010")
-	conn, err := net.Dial("tcp", "tencent.jenkin.tech:9010")
+	conn, err := net.Dial("tcp", "127.0.0.1:9010")
+	//conn, err := net.Dial("tcp", "tencent.jenkin.tech:9010")
 	if err != nil {
 		fmt.Println("客户端建立连接失败")
 		return nil

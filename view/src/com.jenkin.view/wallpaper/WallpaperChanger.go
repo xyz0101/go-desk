@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"syscall"
 	"unsafe"
 )
 
 const (
 	CurrentPathDir = "cache/"
+	MaxSize        = 3
 )
 
 func init() {
@@ -71,6 +73,7 @@ func DownloadImage(imageURL string) (string, error) {
 	path := CurrentPathDir + fmt.Sprintf("%s", fileName) + ".jpg"
 	fmt.Println("校验图片是否已存在", path)
 	exist := Exists(path)
+	deleteLastWhenOverMaxSize()
 	if !exist {
 
 		client := http.Client{}
@@ -103,8 +106,27 @@ func DownloadImage(imageURL string) (string, error) {
 	return absPath, nil
 }
 
+func deleteLastWhenOverMaxSize() {
+	//file, _ := os.OpenFile(CurrentPathDir,os.O_RDONLY,os.ModeDir)
+	infos, _ := ioutil.ReadDir(CurrentPathDir)
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].ModTime().Unix() > infos[j].ModTime().Unix()
+	})
+	if len(infos) > MaxSize {
+		info := infos[len(infos)-1]
+		name := CurrentPathDir + info.Name()
+		e := os.Remove(name)
+		fmt.Println("滚动删除文件：", name)
+		if e != nil {
+			fmt.Println("文件滚动删除失败", e)
+		} else {
+			fmt.Println("文件数量超过 ", MaxSize, " 文件滚动删除成功")
+		}
+	}
+
+}
+
 func SetWallpaper(imageURL string) {
-	//imageURL :="http://img.aibizhi.adesk.com/614acf3be7bce72b931d3d2f?sign=497eb83aa7c6c6783cafdc9d10ed65f3&t=61507c5e"
 
 	fmt.Println("下载图片...", imageURL)
 	imagePath, err := DownloadImage(imageURL)
@@ -113,6 +135,7 @@ func SetWallpaper(imageURL string) {
 		return
 	}
 	fmt.Println("设置桌面...")
+	PreImageCh <- imagePath
 	err = setWindowsWallpaper(imagePath)
 	if err != nil {
 		fmt.Println("设置桌面背景失败: " + err.Error())

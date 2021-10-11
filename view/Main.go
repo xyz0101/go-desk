@@ -17,6 +17,7 @@ var windowMain *walk.MainWindow
 var imgViewPoint *walk.ImageView
 var imgPath string
 var children []Widget
+var compose *walk.Composite
 
 func main() {
 
@@ -49,14 +50,15 @@ func initUI() {
 		Visible:  false,
 		AssignTo: &nextButtonPoint,
 	}
-	imgPath = "app.ico"
-	imgView := ImageView{
-		Image:    imgPath,
+	imgPath = "/"
+	imageView := ImageView{
+		//Image:    imgPath,
 		Margin:   0,
 		Mode:     ImageViewModeShrink,
 		Visible:  false,
 		AssignTo: &imgViewPoint,
 	}
+
 	children = []Widget{
 		userNameLabel,
 		userCodeEdit,
@@ -64,14 +66,14 @@ func initUI() {
 		passwordEdit,
 		loginButton,
 		nextButton,
-		imgView,
+		imageView,
 	}
 
 	_ = MainWindow{
 		AssignTo: &windowMain,
 		Children: []Widget{
 			Composite{
-
+				AssignTo: &compose,
 				Layout:   Grid{Columns: 2},
 				Children: children,
 			},
@@ -89,6 +91,7 @@ func execLogin(mainWindow *walk.MainWindow, userTE *walk.TextEdit, pwTE *walk.Te
 	wallpaper.Login(userTE.Text(), pwTE.Text())
 	res := <-wallpaper.LoginCh
 	if res {
+		wallpaper.Init()
 		go wallpaper.Start()
 		showPreImage()
 	} else {
@@ -102,6 +105,7 @@ func execLogin(mainWindow *walk.MainWindow, userTE *walk.TextEdit, pwTE *walk.Te
 }
 
 func showPreImage() {
+
 	fmt.Println("预览图片")
 	loginButtonPoint.SetVisible(false)
 	userNameLabelPoint.SetVisible(false)
@@ -110,7 +114,11 @@ func showPreImage() {
 	passwordLabelPoint.SetVisible(false)
 	nextButtonPoint.SetVisible(true)
 	imgViewPoint.SetVisible(true)
+
 	for s := range wallpaper.PreImageCh {
+		if imgViewPoint.Image() != nil {
+			imgViewPoint.Image().Dispose()
+		}
 		fmt.Println("收到预览图片：", s)
 		image, _ := walk.NewImageFromFileForDPI(s, 96)
 		setImage := imgViewPoint.SetImage(image)

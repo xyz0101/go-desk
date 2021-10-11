@@ -62,4 +62,5 @@ type WallStrategy struct {
 	Categories   []string `json:"categories"`
 	UserCode     string   `json:"userCode"`
 	TimeUnit     int      `json:"timeUnit"`
+	OnFlag       bool     `json:"onFlag"`
 }

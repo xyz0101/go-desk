@@ -16,11 +16,17 @@ import (
 
 const (
 	CurrentPathDir = "cache/"
-	MaxSize        = 3
+	//最大允许缓存的图片数目
+	MaxSize = 100
 )
 
-func init() {
+var dll *syscall.LazyDLL
+var proc *syscall.LazyProc
+
+func Init() {
 	_ = os.Mkdir(CurrentPathDir, 0755)
+	dll = syscall.NewLazyDLL("user32.dll")
+	proc = dll.NewProc("SystemParametersInfoW")
 }
 
 // EncodeMD5 MD5编码
@@ -32,21 +38,7 @@ func EncodeMD5(value string) string {
 
 // SetWindowsWallpaper 设置windows壁纸
 func setWindowsWallpaper(imagePath string) error {
-	dll := syscall.NewLazyDLL("user32.dll")
-	proc := dll.NewProc("SystemParametersInfoW")
-	_t, _ := syscall.UTF16PtrFromString(imagePath)
-	ret, _, _ := proc.Call(20, 1, uintptr(unsafe.Pointer(_t)), 0x1|0x2)
-	if ret != 1 {
-		return errors.New("系统调用失败")
-	}
-	return nil
-}
 
-func setSleepWallpaper(imagePath string) error {
-
-	dll := syscall.NewLazyDLL("user32.dll")
-
-	proc := dll.NewProc("SystemParametersInfoW")
 	_t, _ := syscall.UTF16PtrFromString(imagePath)
 	ret, _, _ := proc.Call(20, 1, uintptr(unsafe.Pointer(_t)), 0x1|0x2)
 	if ret != 1 {
@@ -84,17 +76,24 @@ func DownloadImage(imageURL string) (string, error) {
 		}
 
 		response, err := client.Do(request)
+
 		if err != nil {
 			return "", err
 		}
-		body, err := ioutil.ReadAll(response.Body)
+		closer := response.Body
+		body, err := ioutil.ReadAll(closer)
+		_ = closer.Close()
 		if err != nil {
+			body = nil
 			return "", err
 		}
 		err = ioutil.WriteFile(path, body, 0755)
+		body = nil
 		if err != nil {
+			body = nil
 			return "", err
 		}
+
 	} else {
 		fmt.Println("壁纸：", fileName, "已存在,不用下载")
 	}
@@ -106,6 +105,7 @@ func DownloadImage(imageURL string) (string, error) {
 	return absPath, nil
 }
 
+//删除超过限制文件
 func deleteLastWhenOverMaxSize() {
 	//file, _ := os.OpenFile(CurrentPathDir,os.O_RDONLY,os.ModeDir)
 	infos, _ := ioutil.ReadDir(CurrentPathDir)

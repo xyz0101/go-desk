@@ -9,17 +9,22 @@ import (
 	"view/src/com.jenkin.view/wallpaperstruct"
 )
 
+//登录状态
 var LoginCh chan bool
+
+//预览图
 var PreImageCh chan string
 
 var rLock sync.RWMutex
 var Conn net.Conn
 var Opt wallpaperstruct.Option
 var Strategy wallpaperstruct.WallStrategy
+var start = true
 
 //func main() {
 //	Start()
 //}
+//建立连接之前的初始化工作
 func PreConn() bool {
 	//无缓冲channel，阻塞
 	LoginCh = make(chan bool)
@@ -33,20 +38,26 @@ func PreConn() bool {
 	}
 	return true
 }
+
+//处理服务端响应数据
 func handleEvent() {
 	go WallpaperHandler()
 }
-func Start() {
 
+//启动循环获取壁纸
+func Start() {
+	start = true
 	if Conn != nil {
 		// 根据策略循环
 		loopNext()
 	}
+	start = false
 }
 
+//获取连接
 func getConnection() net.Conn {
-	conn, err := net.Dial("tcp", "127.0.0.1:9010")
-	//conn, err := net.Dial("tcp", "tencent.jenkin.tech:9010")
+	//conn, err := net.Dial("tcp", "127.0.0.1:9010")
+	conn, err := net.Dial("tcp", "tencent.jenkin.tech:9010")
 	if err != nil {
 		fmt.Println("客户端建立连接失败")
 		return nil
@@ -55,6 +66,7 @@ func getConnection() net.Conn {
 	return conn
 }
 
+//登录
 func Login(code string, password string) {
 	option := wallpaperstruct.Option{
 		OperateType: "login",
@@ -65,9 +77,10 @@ func Login(code string, password string) {
 	handleEvent()
 }
 
+// 循环获取壁纸
 func loopNext() {
 
-	for {
+	for Strategy.OnFlag {
 
 		rLock.RLock()
 		second := getSleepSecondTime()
@@ -82,9 +95,11 @@ func loopNext() {
 		}
 		rLock.RUnlock()
 	}
+
 }
 
 /**
+获取循环时间
  MINUTE("second",0,"秒"),
  MINUTE("minute",1,"分钟"),
 UN_START("hour",2,"小时"),
@@ -107,6 +122,7 @@ func getSleepSecondTime() int {
 
 }
 
+//处理服务端返回的指令
 func WallpaperHandler() {
 	fmt.Println("监听壁纸返回")
 	//缓存 conn 中的数据
@@ -147,6 +163,7 @@ func WallpaperHandler() {
 	}
 }
 
+// 断线重连
 func tryReconnect() {
 	for {
 		connection := getConnection()
@@ -160,6 +177,7 @@ func tryReconnect() {
 	}
 }
 
+// 登录失败
 func loginFailed(option wallpaperstruct.Option, conn net.Conn) {
 	LoginCh <- false
 	//fmt.Println("登录失败，用户未注册，或未配置规则,5秒后退出")
@@ -167,6 +185,7 @@ func loginFailed(option wallpaperstruct.Option, conn net.Conn) {
 	//os.Exit(0)
 }
 
+// 登陆成功操作
 func loginSuccess(option wallpaperstruct.Option, conn net.Conn) {
 	rLock.Lock()
 	opdata := option.OperateData
@@ -178,29 +197,39 @@ func loginSuccess(option wallpaperstruct.Option, conn net.Conn) {
 	fmt.Println("登录获取到的配置：", Strategy)
 	fmt.Println("登录成功：", option)
 	defer rLock.Unlock()
+	// 登录状态管道写入成功
 	LoginCh <- true
 
 }
 
+// 更换策略
 func changeStrategy(option wallpaperstruct.Option, conn net.Conn) {
-	//for {
+
 	fmt.Println("策略变更，变更前：", Strategy, "变更后：", option.OperateData)
 	strategy := &wallpaperstruct.WallStrategy{}
 	JsonToStruct(option.OperateData, strategy)
 	Strategy = *strategy
 	Opt.OperateData = option.OperateData
 	getNextFromServer(option, conn)
-	//}
+	// 禁用后重启
+	if !start {
+		go Start()
+	}
+
 }
+
+// 下一张壁纸
 func Next() {
 	getNextFromServer(Opt, Conn)
 }
 
+// 从服务器获取下一张壁纸
 func getNextFromServer(option wallpaperstruct.Option, conn net.Conn) {
 	option.OperateType = "next"
 	writeServer(option, conn)
 }
 
+//更换壁纸
 func changeWallpaper(option wallpaperstruct.Option, conn net.Conn) {
 	wall := &wallpaperstruct.Wallpaper{}
 	JsonToStruct(option.OperateData, wall)
@@ -208,6 +237,7 @@ func changeWallpaper(option wallpaperstruct.Option, conn net.Conn) {
 	SetWallpaper(wall.Img)
 }
 
+//读取服务端数据
 func readInfo(conn net.Conn, buf []byte) (*wallpaperstruct.Option, error) {
 	cnt, err := conn.Read(buf)
 	if err != nil {
@@ -224,6 +254,7 @@ func readInfo(conn net.Conn, buf []byte) (*wallpaperstruct.Option, error) {
 	return res, nil
 }
 
+//结构体转json
 func StructToJson(data interface{}) string {
 	res, err := json.Marshal(data)
 	if err != nil {
@@ -232,6 +263,7 @@ func StructToJson(data interface{}) string {
 	return string(res)
 }
 
+//json转结构体
 func JsonToStruct(text string, data interface{}) {
 	err := json.Unmarshal([]byte(text), data)
 	if err != nil {
@@ -239,6 +271,7 @@ func JsonToStruct(text string, data interface{}) {
 	}
 }
 
+//心跳检测,暂时不用
 func HeartBeatHandler(c net.Conn) {
 	fmt.Println("监听心跳")
 	//缓存 conn 中的数据
@@ -263,6 +296,7 @@ func HeartBeatHandler(c net.Conn) {
 	}
 }
 
+//向服务端写数据
 func writeServer(option wallpaperstruct.Option, conn net.Conn) {
 	toJson := StructToJson(option)
 	fmt.Println("发送 数据：", toJson)

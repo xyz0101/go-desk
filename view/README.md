@@ -1,4 +1,4 @@
 ### 打包构建命令
-go build -o GoDesk.exe
+go build -ldflags="-H windowsgui" -o GoDesk.exe
 
 ### 

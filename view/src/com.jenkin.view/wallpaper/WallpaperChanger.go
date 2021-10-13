@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"syscall"
 	"unsafe"
+	"view/src/com.jenkin.view/downloader"
 )
 
 const (
@@ -67,34 +67,9 @@ func DownloadImage(imageURL string) (string, error) {
 	exist := Exists(path)
 	deleteLastWhenOverMaxSize()
 	if !exist {
-
-		client := http.Client{}
-
-		request, err := http.NewRequest("GET", imageURL, nil)
-		if err != nil {
-			return "", err
-		}
-
-		response, err := client.Do(request)
-
-		if err != nil {
-			return "", err
-		}
-		closer := response.Body
-		body, err := ioutil.ReadAll(closer)
-		_ = closer.Close()
-		if err != nil {
-			body = nil
-			return "", err
-		}
-		err = ioutil.WriteFile(path, body, 0755)
-		body = nil
-		if err != nil {
-			body = nil
-			return "", err
-		}
-
+		downloader.Download(imageURL, path)
 	} else {
+
 		fmt.Println("壁纸：", fileName, "已存在,不用下载")
 	}
 	absPath, err := filepath.Abs(path)

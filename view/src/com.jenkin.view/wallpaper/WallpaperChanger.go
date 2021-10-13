@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"syscall"
+	"time"
 	"unsafe"
 	"view/src/com.jenkin.view/downloader"
 )
@@ -20,13 +21,9 @@ const (
 	MaxSize = 100
 )
 
-var dll *syscall.LazyDLL
-var proc *syscall.LazyProc
-
 func Init() {
 	_ = os.Mkdir(CurrentPathDir, 0755)
-	dll = syscall.NewLazyDLL("user32.dll")
-	proc = dll.NewProc("SystemParametersInfoW")
+
 }
 
 // EncodeMD5 MD5编码
@@ -38,7 +35,8 @@ func EncodeMD5(value string) string {
 
 // SetWindowsWallpaper 设置windows壁纸
 func setWindowsWallpaper(imagePath string) error {
-
+	dll := syscall.NewLazyDLL("user32.dll")
+	proc := dll.NewProc("SystemParametersInfoW")
 	_t, _ := syscall.UTF16PtrFromString(imagePath)
 	ret, _, _ := proc.Call(20, 1, uintptr(unsafe.Pointer(_t)), 0x1|0x2)
 	if ret != 1 {
@@ -110,11 +108,13 @@ func SetWallpaper(imageURL string) {
 		return
 	}
 	fmt.Println("设置桌面...")
+	t := time.Now()
 	PreImageCh <- imagePath
 	err = setWindowsWallpaper(imagePath)
 	if err != nil {
 		fmt.Println("设置桌面背景失败: " + err.Error())
 		return
 	}
+	fmt.Println("耗时：", time.Since(t).Milliseconds())
 	fmt.Println("桌面设置成功")
 }

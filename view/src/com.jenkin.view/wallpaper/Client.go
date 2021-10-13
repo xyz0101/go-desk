@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"sync"
 	"time"
 	"view/src/com.jenkin.view/wallpaperstruct"
 )
@@ -15,7 +14,6 @@ var LoginCh chan bool
 //预览图
 var PreImageCh chan string
 
-var rLock sync.RWMutex
 var Conn net.Conn
 var Opt wallpaperstruct.Option
 var Strategy wallpaperstruct.WallStrategy
@@ -82,7 +80,6 @@ func loopNext() {
 
 	for Strategy.OnFlag {
 
-		rLock.RLock()
 		second := getSleepSecondTime()
 		fmt.Println("间隔时间为：", second)
 		if &Opt != nil && second > 0 {
@@ -93,7 +90,6 @@ func loopNext() {
 			fmt.Println("循环检测未登录")
 			time.Sleep(2 * time.Second)
 		}
-		rLock.RUnlock()
 	}
 
 }
@@ -128,13 +124,13 @@ func WallpaperHandler() {
 	//缓存 conn 中的数据
 	buf := make([]byte, 1024*10)
 	for {
-		rLock.RLock()
+
 		if &Opt == nil {
 			fmt.Println("监听壁纸未登录")
 			time.Sleep(time.Second * 2)
 			continue
 		}
-		rLock.RUnlock()
+
 		fmt.Println("等待数据")
 		info, err := readInfo(Conn, buf)
 		if err != nil {
@@ -154,7 +150,8 @@ func WallpaperHandler() {
 					loginSuccess(data, Conn)
 				case "loginFailed":
 					loginFailed(data, Conn)
-
+				default:
+					fmt.Print("非法请求")
 				}
 			} else {
 				fmt.Println("操作类型为空")
@@ -187,7 +184,6 @@ func loginFailed(option wallpaperstruct.Option, conn net.Conn) {
 
 // 登陆成功操作
 func loginSuccess(option wallpaperstruct.Option, conn net.Conn) {
-	rLock.Lock()
 	opdata := option.OperateData
 
 	strategy := &wallpaperstruct.WallStrategy{}
@@ -196,7 +192,6 @@ func loginSuccess(option wallpaperstruct.Option, conn net.Conn) {
 	Opt = option
 	fmt.Println("登录获取到的配置：", Strategy)
 	fmt.Println("登录成功：", option)
-	defer rLock.Unlock()
 	// 登录状态管道写入成功
 	LoginCh <- true
 
@@ -234,7 +229,7 @@ func changeWallpaper(option wallpaperstruct.Option, conn net.Conn) {
 	wall := &wallpaperstruct.Wallpaper{}
 	JsonToStruct(option.OperateData, wall)
 	fmt.Println("准备设置桌面")
-	SetWallpaper(wall.Img)
+	go SetWallpaper(wall.Img)
 }
 
 //读取服务端数据

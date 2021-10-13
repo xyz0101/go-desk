@@ -41,7 +41,7 @@ const app_ico = "AAABAAUAEBAAAAEACABoBQAAVgAAAAAAAAABACAAKCAEAL4FAAAwMAAAAQAgAKg
 var lock sync.Mutex
 
 func main() {
-
+	wallpaper.Init()
 	initUI()
 
 }
@@ -171,7 +171,7 @@ func buildNotifyIcon() *walk.NotifyIcon {
 	if err := notifyIcon.SetIcon(icon); err != nil {
 		log.Fatal(err)
 	}
-	if err := notifyIcon.SetToolTip("鼠标在icon上悬浮的信息."); err != nil {
+	if err := notifyIcon.SetToolTip("右键可选择退出程序"); err != nil {
 		log.Fatal(err)
 	}
 
@@ -205,7 +205,7 @@ func execLogin(mainWindow *walk.MainWindow, userTE *walk.TextEdit, pwTE *walk.Te
 	wallpaper.Login(userTE.Text(), pwTE.Text())
 	res := <-wallpaper.LoginCh
 	if res {
-		wallpaper.Init()
+
 		go wallpaper.Start()
 		go monitorDownloadProcess()
 		showPreImage()
@@ -251,6 +251,7 @@ func showPreImage() {
 		if setImage != nil {
 			fmt.Println("设置预览失败：", setImage)
 		}
+		fmt.Println("设置预览成功")
 		nextButtonPoint.SetEnabled(true)
 	}
 }

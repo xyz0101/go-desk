@@ -6,23 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"syscall"
 	"time"
 	"unsafe"
+	"view/src/com.jenkin.view/commonConst"
 	"view/src/com.jenkin.view/downloader"
 )
 
-const (
-	CurrentPathDir = "cache/"
-	//最大允许缓存的图片数目
-	MaxSize = 100
-)
-
 func Init() {
-	_ = os.Mkdir(CurrentPathDir, 0755)
+	_ = os.Mkdir(commonConst.CurrentPathDir, 0755)
 
 }
 
@@ -60,15 +56,15 @@ func Exists(path string) bool {
 // DownloadImage 下载图片,保存并返回保存的文件名的绝对路径
 func DownloadImage(imageURL string) (string, error) {
 	fileName := EncodeMD5(imageURL)
-	path := CurrentPathDir + fmt.Sprintf("%s", fileName) + ".jpg"
-	fmt.Println("校验图片是否已存在", path)
+	path := commonConst.CurrentPathDir + fmt.Sprintf("%s", fileName) + ".jpg"
+	log.Println("校验图片是否已存在", path)
 	exist := Exists(path)
 	deleteLastWhenOverMaxSize()
 	if !exist {
 		downloader.Download(imageURL, path)
 	} else {
 
-		fmt.Println("壁纸：", fileName, "已存在,不用下载")
+		log.Println("壁纸：", fileName, "已存在,不用下载")
 	}
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -81,19 +77,19 @@ func DownloadImage(imageURL string) (string, error) {
 //删除超过限制文件
 func deleteLastWhenOverMaxSize() {
 	//file, _ := os.OpenFile(CurrentPathDir,os.O_RDONLY,os.ModeDir)
-	infos, _ := ioutil.ReadDir(CurrentPathDir)
+	infos, _ := ioutil.ReadDir(commonConst.CurrentPathDir)
 	sort.Slice(infos, func(i, j int) bool {
 		return infos[i].ModTime().Unix() > infos[j].ModTime().Unix()
 	})
-	if len(infos) > MaxSize {
+	if len(infos) > commonConst.MaxSize {
 		info := infos[len(infos)-1]
-		name := CurrentPathDir + info.Name()
+		name := commonConst.CurrentPathDir + info.Name()
 		e := os.Remove(name)
-		fmt.Println("滚动删除文件：", name)
+		log.Println("滚动删除文件：", name)
 		if e != nil {
-			fmt.Println("文件滚动删除失败", e)
+			log.Println("文件滚动删除失败", e)
 		} else {
-			fmt.Println("文件数量超过 ", MaxSize, " 文件滚动删除成功")
+			log.Println("文件数量超过 ", commonConst.MaxSize, " 文件滚动删除成功")
 		}
 	}
 
@@ -101,20 +97,20 @@ func deleteLastWhenOverMaxSize() {
 
 func SetWallpaper(imageURL string) {
 
-	fmt.Println("下载图片...", imageURL)
+	log.Println("下载图片...", imageURL)
 	imagePath, err := DownloadImage(imageURL)
 	if err != nil {
-		fmt.Println("下载图片失败: " + err.Error())
+		log.Println("下载图片失败: " + err.Error())
 		return
 	}
-	fmt.Println("设置桌面...")
+	log.Println("设置桌面...")
 	t := time.Now()
 	PreImageCh <- imagePath
 	err = setWindowsWallpaper(imagePath)
 	if err != nil {
-		fmt.Println("设置桌面背景失败: " + err.Error())
+		log.Println("设置桌面背景失败: " + err.Error())
 		return
 	}
-	fmt.Println("耗时：", time.Since(t).Milliseconds())
-	fmt.Println("桌面设置成功")
+	log.Println("耗时：", time.Since(t).Milliseconds())
+	log.Println("桌面设置成功")
 }

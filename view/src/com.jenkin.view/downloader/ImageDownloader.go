@@ -1,7 +1,6 @@
 package downloader
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -23,9 +22,9 @@ func (d *Downloader) Read(p []byte) (n int, err error) {
 	n, err = d.Reader.Read(p)
 	d.Current += int64(n)
 	percent := float64(d.Current*10000/d.Total) / 100
-	fmt.Printf("\r正在下载，下载进度：%.2f%%", percent)
+	//log.Printf("\r正在下载，下载进度：%.2f%%", percent)
 	if d.Current == d.Total {
-		fmt.Printf("\r下载完成，下载进度：%.2f%%", 100.00)
+		//log.Printf("\r下载完成，下载进度：%.2f%%", 100.00)
 	}
 	//if percentMap == nil {
 	//	percentMap = lru.GetLRUCache(10)

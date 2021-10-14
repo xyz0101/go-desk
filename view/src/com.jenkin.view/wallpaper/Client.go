@@ -2,7 +2,7 @@ package wallpaper
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net"
 	"time"
 	"view/src/com.jenkin.view/wallpaperstruct"
@@ -74,10 +74,10 @@ func getConnection() net.Conn {
 	//conn, err := net.Dial("tcp", "127.0.0.1:9010")
 	conn, err := net.Dial("tcp", "tencent.jenkin.tech:9010")
 	if err != nil {
-		fmt.Println("客户端建立连接失败")
+		log.Println("客户端建立连接失败")
 		return nil
 	}
-	fmt.Println("连接获取成功")
+	log.Println("连接获取成功")
 	return conn
 }
 
@@ -97,13 +97,13 @@ func loopNext() {
 
 	for Strategy.OnFlag {
 		second := getSleepSecondTime()
-		fmt.Println("间隔时间为：", second)
+		log.Println("间隔时间为：", second)
 		if &Opt != nil && second > 0 {
 			getNextFromServer(Opt, Conn)
 			time.Sleep(time.Duration(second) * time.Second)
 		} else {
-			fmt.Println(second, Strategy)
-			fmt.Println("循环检测未登录")
+			log.Println(second, Strategy)
+			log.Println("循环检测未登录")
 			time.Sleep(2 * time.Second)
 		}
 	}
@@ -136,18 +136,18 @@ func getSleepSecondTime() int {
 
 //处理服务端返回的指令
 func WallpaperHandler() {
-	fmt.Println("监听壁纸返回")
+	log.Println("监听壁纸返回")
 	//缓存 conn 中的数据
 	buf := make([]byte, 1024*10)
 	for {
 
 		if &Opt == nil {
-			fmt.Println("监听壁纸未登录")
+			log.Println("监听壁纸未登录")
 			time.Sleep(time.Second * 2)
 			continue
 		}
 
-		fmt.Println("等待数据")
+		log.Println("等待数据")
 		info, err := readInfo(Conn, buf)
 		if err != nil {
 			tryReconnect()
@@ -156,7 +156,7 @@ func WallpaperHandler() {
 			data := *info
 			opType := data.OperateType
 			if opType != "" {
-				fmt.Println("操作类型：", opType, " 操作人：", data.UserCode, " 数据：", data.OperateData)
+				log.Println("操作类型：", opType, " 操作人：", data.UserCode, " 数据：", data.OperateData)
 				switch opType {
 				case CmdChangeWallpaper:
 					changeWallpaper(data, Conn)
@@ -167,10 +167,10 @@ func WallpaperHandler() {
 				case CmdLoginFailed:
 					loginFailed(data, Conn)
 				default:
-					fmt.Print("非法请求")
+					log.Print("非法请求")
 				}
 			} else {
-				fmt.Println("操作类型为空")
+				log.Println("操作类型为空")
 			}
 		}
 	}
@@ -181,7 +181,7 @@ func tryReconnect() {
 	for {
 		connection := getConnection()
 		if connection == nil {
-			fmt.Println("5秒后重试获取连接")
+			log.Println("5秒后重试获取连接")
 			time.Sleep(time.Second * 5)
 		} else {
 			Conn = connection
@@ -193,7 +193,7 @@ func tryReconnect() {
 // 登录失败
 func loginFailed(option wallpaperstruct.Option, conn net.Conn) {
 	LoginCh <- false
-	//fmt.Println("登录失败，用户未注册，或未配置规则,5秒后退出")
+	//log.Println("登录失败，用户未注册，或未配置规则,5秒后退出")
 	//time.Sleep(time.Second * 5)
 	//os.Exit(0)
 }
@@ -206,8 +206,8 @@ func loginSuccess(option wallpaperstruct.Option, conn net.Conn) {
 	JsonToStruct(opdata, strategy)
 	Strategy = *strategy
 	Opt = option
-	fmt.Println("登录获取到的配置：", Strategy)
-	fmt.Println("登录成功：", option)
+	log.Println("登录获取到的配置：", Strategy)
+	log.Println("登录成功：", option)
 	// 登录状态管道写入成功
 	LoginCh <- true
 
@@ -216,7 +216,7 @@ func loginSuccess(option wallpaperstruct.Option, conn net.Conn) {
 // 更换策略
 func changeStrategy(option wallpaperstruct.Option, conn net.Conn) {
 
-	fmt.Println("策略变更，变更前：", Strategy, "变更后：", option.OperateData)
+	log.Println("策略变更，变更前：", Strategy, "变更后：", option.OperateData)
 	strategy := &wallpaperstruct.WallStrategy{}
 	JsonToStruct(option.OperateData, strategy)
 	Strategy = *strategy
@@ -244,7 +244,7 @@ func getNextFromServer(option wallpaperstruct.Option, conn net.Conn) {
 func changeWallpaper(option wallpaperstruct.Option, conn net.Conn) {
 	wall := &wallpaperstruct.Wallpaper{}
 	JsonToStruct(option.OperateData, wall)
-	fmt.Println("准备设置桌面")
+	log.Println("准备设置桌面")
 	go SetWallpaper(wall.Img)
 }
 
@@ -252,7 +252,7 @@ func changeWallpaper(option wallpaperstruct.Option, conn net.Conn) {
 func readInfo(conn net.Conn, buf []byte) (*wallpaperstruct.Option, error) {
 	cnt, err := conn.Read(buf)
 	if err != nil {
-		fmt.Println("客户端读取数据失败 %s\n", err)
+		log.Println("客户端读取数据失败 %s\n", err)
 		return nil, err
 	}
 	data := buf[0:cnt]
@@ -261,7 +261,7 @@ func readInfo(conn net.Conn, buf []byte) (*wallpaperstruct.Option, error) {
 	res := &wallpaperstruct.Option{}
 	JsonToStruct(dataStr, res)
 	//回显服务器端回传的信息
-	fmt.Println("服务器端回复: " + dataStr)
+	log.Println("服务器端回复: " + dataStr)
 	return res, nil
 }
 
@@ -269,7 +269,7 @@ func readInfo(conn net.Conn, buf []byte) (*wallpaperstruct.Option, error) {
 func StructToJson(data interface{}) string {
 	res, err := json.Marshal(data)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	return string(res)
 }
@@ -278,13 +278,13 @@ func StructToJson(data interface{}) string {
 func JsonToStruct(text string, data interface{}) {
 	err := json.Unmarshal([]byte(text), data)
 	if err != nil {
-		fmt.Println("json转结构体异常：", text)
+		log.Println("json转结构体异常：", text)
 	}
 }
 
 //心跳检测,暂时不用
 func HeartBeatHandler(c net.Conn) {
-	fmt.Println("监听心跳")
+	log.Println("监听心跳")
 	//缓存 conn 中的数据
 	buf := make([]byte, 1024*10)
 	for {
@@ -297,12 +297,12 @@ func HeartBeatHandler(c net.Conn) {
 
 		cnt, err := c.Read(buf)
 		if err != nil {
-			fmt.Println("客户端读取数据失败 %s\n", err)
+			log.Println("客户端读取数据失败 %s\n", err)
 			time.Sleep(time.Second * 5)
 			continue
 		}
 		//回显服务器端回传的信息
-		fmt.Println("服务器端回复" + string(buf[0:cnt]))
+		log.Println("服务器端回复" + string(buf[0:cnt]))
 		time.Sleep(time.Second * 5)
 	}
 }
@@ -310,6 +310,6 @@ func HeartBeatHandler(c net.Conn) {
 //向服务端写数据
 func writeServer(option wallpaperstruct.Option, conn net.Conn) {
 	toJson := StructToJson(option)
-	fmt.Println("发送 数据：", toJson)
+	log.Println("发送 数据：", toJson)
 	_, _ = conn.Write([]byte(toJson + "````"))
 }

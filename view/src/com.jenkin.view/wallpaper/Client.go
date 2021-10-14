@@ -19,6 +19,26 @@ var Opt wallpaperstruct.Option
 var Strategy wallpaperstruct.WallStrategy
 var start = true
 
+// 从服务端接受的指令
+const (
+	//更换壁纸
+	CmdChangeWallpaper = "changeWallpaper"
+	//更换策略
+	CmdChangeStrategy = "changeStrategy"
+	//登录成功
+	CmdLoginSuccess = "loginSuccess"
+	//登录失败
+	CmdLoginFailed = "loginFailed"
+)
+
+// 发送给服务端的指令
+const (
+	//登录
+	CmdLogin = "login"
+	//下一张壁纸
+	CmdNext = "next"
+)
+
 //func main() {
 //	Start()
 //}
@@ -29,9 +49,6 @@ func PreConn() bool {
 	PreImageCh = make(chan string, 10)
 	Conn = getConnection()
 	if Conn == nil {
-		//fmt.Println("客户端建立连接失败,5秒后退出程序")
-		//time.Sleep(time.Second * 5)
-		//os.Exit(0)
 		return false
 	}
 	return true
@@ -67,7 +84,7 @@ func getConnection() net.Conn {
 //登录
 func Login(code string, password string) {
 	option := wallpaperstruct.Option{
-		OperateType: "login",
+		OperateType: CmdLogin,
 		UserCode:    code,
 		OperateData: password,
 	}
@@ -79,7 +96,6 @@ func Login(code string, password string) {
 func loopNext() {
 
 	for Strategy.OnFlag {
-
 		second := getSleepSecondTime()
 		fmt.Println("间隔时间为：", second)
 		if &Opt != nil && second > 0 {
@@ -142,13 +158,13 @@ func WallpaperHandler() {
 			if opType != "" {
 				fmt.Println("操作类型：", opType, " 操作人：", data.UserCode, " 数据：", data.OperateData)
 				switch opType {
-				case "changeWallpaper":
+				case CmdChangeWallpaper:
 					changeWallpaper(data, Conn)
-				case "changeStrategy":
+				case CmdChangeStrategy:
 					changeStrategy(data, Conn)
-				case "loginSuccess":
+				case CmdLoginSuccess:
 					loginSuccess(data, Conn)
-				case "loginFailed":
+				case CmdLoginFailed:
 					loginFailed(data, Conn)
 				default:
 					fmt.Print("非法请求")
@@ -220,7 +236,7 @@ func Next() {
 
 // 从服务器获取下一张壁纸
 func getNextFromServer(option wallpaperstruct.Option, conn net.Conn) {
-	option.OperateType = "next"
+	option.OperateType = CmdNext
 	writeServer(option, conn)
 }
 

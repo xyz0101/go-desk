@@ -4,7 +4,6 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/GoDesk.iml" filepath="$PROJECT_DIR$/GoDesk.iml" />
       <module fileurl="file://$PROJECT_DIR$/view/view.iml" filepath="$PROJECT_DIR$/view/view.iml" />
-      <module fileurl="file://$PROJECT_DIR$/wallpaperapi/wallpaperapi.iml" filepath="$PROJECT_DIR$/wallpaperapi/wallpaperapi.iml" />
     </modules>
   </component>
 </project>
